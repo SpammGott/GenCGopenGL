@@ -296,6 +296,8 @@ def mouse_pressed(button, state, x, y):
             mouse_x = None
             mouse_y = None
 
+    glutPostRedisplay()
+
 
 def mouse_moved(x, y):
     global mouse_x, mouse_y, zooming, zoom, rotate_x, rotate_y, translating, new_x_pos, new_y_pos
