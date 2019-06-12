@@ -125,10 +125,9 @@ def create_obj_from_file():
     for vertex in faces:
         vn = int(vertex[0]) - 1
         nn = int(vertex[2]) - 1
-        if normals:
+        if 0 <= nn < len(normals):
             data.append(vertices[vn] + normals[nn])
         else:
-            # calc standard normals, if no objectNormals available
             normals = [x - y for x, y in zip(vertices[vn], [x, y, z])]
             l = math.sqrt(normals[0] ** 2 + normals[1] ** 2 + normals[2] ** 2)
             normals = [x / l for x in normals]
