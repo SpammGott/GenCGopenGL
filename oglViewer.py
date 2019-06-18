@@ -10,12 +10,18 @@ from OpenGL.arrays import vbo
 WIDTH = 500
 HEIGHT = 500
 
-BLACK = (0.0, 0.0, 0.0, 0.0)
-WHITE = (1.0, 1.0, 1.0, 0.0)
-RED = (1.0, 0.0, 0.0, 0.0)
-BLUE = (0.0, 0.0, 1.0, 0.0)
-YELLOW = (1.0, 1.0, 0.0, 0.0)
-color = (1.0, 1.0, 1.0, 0.0)
+BG_BLACK = (0.0, 0.0, 0.0, 0.0)
+BG_WHITE = (1.0, 1.0, 1.0, 0.0)
+BG_RED = (1.0, 0.0, 0.0, 0.0)
+BG_BLUE = (0.0, 0.0, 1.0, 0.0)
+BG_YELLOW = (1.0, 1.0, 0.0, 0.0)
+
+M_BLACK = (0.0, 0.0, 0.0)
+M_WHITE = (1.0, 1.0, 1.0)
+M_RED = (1.0, 0.0, 0.0)
+M_BLUE = (0.0, 0.0, 1.0)
+M_YELLOW = (1.0, 1.0, 0.0)
+color = M_RED
 
 ANGLE = 10
 
@@ -47,7 +53,7 @@ new_y_pos = 0.0
 
 
 def init_opengl():
-    glClearColor(*WHITE)
+    glClearColor(*BG_WHITE)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     glOrtho(-1.5, 1.5, -1.5, 1.5, -10.0, 10.0)
@@ -111,6 +117,8 @@ def create_obj_from_file():
     y = min_y + ((max_y - min_y) / 2)
     z = min_z + ((max_z - min_z) / 2)
 
+    glTranslate(0.0, min_y, 0.0)
+
     center.append(x)
     center.append(y)
     center.append(z)
@@ -171,15 +179,19 @@ def display():
     glDrawArrays(GL_TRIANGLES, 0, len(data))
 
     # Schatten ab hier
+    glDisable(GL_DEPTH_TEST)
+    glColor3fv(color)
+    glCallList(my_vbo)
     glMatrixMode(GL_MODELVIEW)
     glPushMatrix()
     glTranslatef(1.0, 1.0, 1.0)
     glMultMatrixf(p)
     glTranslatef(-1.0, -1.0, -1.0)
-    glColor(BLACK)
+    glColor3fv(M_BLACK)
 
     glCallList(my_vbo)
     glPopMatrix()
+    glEnable(GL_DEPTH_TEST)
     # Schatten bis hier
 
     my_vbo.unbind()
@@ -234,34 +246,34 @@ def key_pressed(key, x, y):
         sys.exit()
 
     if key == 's':
-        glClearColor(*BLACK)
+        glClearColor(*BG_BLACK)
 
     if key == 'w':
-        glClearColor(*WHITE)
+        glClearColor(*BG_WHITE)
 
     if key == 'r':
-        glClearColor(*RED)
+        glClearColor(*BG_RED)
 
     if key == 'b':
-        glClearColor(*BLUE)
+        glClearColor(*BG_BLUE)
 
     if key == 'g':
-        glClearColor(*YELLOW)
+        glClearColor(*BG_YELLOW)
 
     if key == 'S':
-        color = BLACK
+        color = M_BLACK
 
     if key == 'W':
-        color = WHITE
+        color = M_WHITE
 
     if key == 'R':
-        color = RED
+        color = M_RED
 
     if key == 'B':
-        color = BLUE
+        color = M_BLUE
 
     if key == 'G':
-        color = YELLOW
+        color = M_YELLOW
 
     if key == 'o':
         if persp_proj:
@@ -338,12 +350,13 @@ def mouse_moved(x, y):
 
     mouse_x = x
     mouse_y = y
+
     glutPostRedisplay()
 
 
 def main():
     glutInit(sys.argv)
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB)
     glutInitWindowSize(WIDTH, HEIGHT)
     glutCreateWindow("OpenGL obj Viewer")
 
