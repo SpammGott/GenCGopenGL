@@ -15,6 +15,7 @@ WHITE = (1.0, 1.0, 1.0, 0.0)
 RED = (1.0, 0.0, 0.0, 0.0)
 BLUE = (0.0, 0.0, 1.0, 0.0)
 YELLOW = (1.0, 1.0, 0.0, 0.0)
+color = (1.0, 1.0, 1.0, 0.0)
 
 ANGLE = 10
 
@@ -46,7 +47,7 @@ new_y_pos = 0.0
 
 
 def init_opengl():
-    glClearColor(*BLACK)
+    glClearColor(*WHITE)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     glOrtho(-1.5, 1.5, -1.5, 1.5, -10.0, 10.0)
@@ -147,7 +148,12 @@ def display():
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_NORMALIZE)
 
+    light = np.array([1.0, 1.0, 1.0, 0.0])
+    glLightfv(GL_LIGHT0, GL_POSITION, light)
+    p = [1.0, 0, 0, 0, 0, 1.0, 0, -1.0 / 1.0, 0, 0, 1.0, 0, 0, 0, 0, 0]
+
     my_vbo.bind()
+    glColor(*color)
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
     glVertexPointer(3, GL_FLOAT, 24, my_vbo)
@@ -164,7 +170,20 @@ def display():
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     glDrawArrays(GL_TRIANGLES, 0, len(data))
 
+    # Schatten ab hier
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    glTranslatef(1.0, 1.0, 1.0)
+    glMultMatrixf(p)
+    glTranslatef(-1.0, -1.0, -1.0)
+    glColor(BLACK)
+
+    glCallList(my_vbo)
+    glPopMatrix()
+    # Schatten bis hier
+
     my_vbo.unbind()
+
     glDisableClientState(GL_VERTEX_ARRAY)
     glDisableClientState(GL_NORMAL_ARRAY)
     glutSwapBuffers()
@@ -207,7 +226,7 @@ def resize_viewport(width, height):
 
 
 def key_pressed(key, x, y):
-    global persp_proj, ortho_proj
+    global persp_proj, ortho_proj, color
 
     key = key.decode("utf-8")
 
@@ -230,19 +249,19 @@ def key_pressed(key, x, y):
         glClearColor(*YELLOW)
 
     if key == 'S':
-        glColor(*BLACK)
+        color = BLACK
 
     if key == 'W':
-        glColor(*WHITE)
+        color = WHITE
 
     if key == 'R':
-        glColor(*RED)
+        color = RED
 
     if key == 'B':
-        glColor(*BLUE)
+        color = BLUE
 
     if key == 'G':
-        glColor(*YELLOW)
+        color = YELLOW
 
     if key == 'o':
         if persp_proj:
@@ -296,8 +315,6 @@ def mouse_pressed(button, state, x, y):
             mouse_x = None
             mouse_y = None
 
-    glutPostRedisplay()
-
 
 def mouse_moved(x, y):
     global mouse_x, mouse_y, zooming, zoom, rotate_x, rotate_y, translating, new_x_pos, new_y_pos
@@ -321,6 +338,7 @@ def mouse_moved(x, y):
 
     mouse_x = x
     mouse_y = y
+    glutPostRedisplay()
 
 
 def main():
