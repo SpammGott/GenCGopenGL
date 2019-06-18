@@ -1,5 +1,6 @@
 import math
 
+import glfw
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -40,8 +41,8 @@ far = 100.0
 zoom = 0
 zooming = False
 
-mouse_x = None
-mouse_y = None
+mouse_x = 0
+mouse_y = 0
 
 rotate_b = False
 rotate_x = 0.0
@@ -50,6 +51,8 @@ rotate_y = 0.0
 translating = False
 new_x_pos = 0.0
 new_y_pos = 0.0
+
+smallChars = True
 
 actOri = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
 start_p = [0, 0, 0]
@@ -124,8 +127,6 @@ def create_obj_from_file():
     y = min_y + ((max_y - min_y) / 2)
     z = min_z + ((max_z - min_z) / 2)
 
-    glTranslate(0.0, min_y, 0.0)
-
     center.append(x)
     center.append(y)
     center.append(z)
@@ -168,7 +169,6 @@ def display():
     p = [1.0, 0, 0, 0, 0, 1.0, 0, -1.0 / 1.0, 0, 0, 1.0, 0, 0, 0, 0, 0]
 
     my_vbo.bind()
-    glColor(*color)
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
     glVertexPointer(3, GL_FLOAT, 24, my_vbo)
@@ -213,10 +213,10 @@ def display():
 
     glDisableClientState(GL_VERTEX_ARRAY)
     glDisableClientState(GL_NORMAL_ARRAY)
-    glutSwapBuffers()
+    glfw.swap_buffers(window)
 
 
-def resize_viewport(width, height):
+def resize_viewport(win, width, height):
     global HEIGHT, WIDTH, zoom
     WIDTH = width
     HEIGHT = height
@@ -250,61 +250,94 @@ def resize_viewport(width, height):
     glMatrixMode(GL_MODELVIEW)
 
 
-def key_pressed(key, x, y):
-    global persp_proj, ortho_proj, color, shadows, WIDTH, HEIGHT
+def key_pressed(win, key, scancode, action, mods):
+    global persp_proj, ortho_proj, smallChars, shadows, WIDTH, HEIGHT
 
-    key = key.decode("utf-8")
+    if action == glfw.PRESS:
+        if smallChars:
+            if key == glfw.KEY_S:
+                glClearColor(*BG_BLACK)
 
-    if key == '\x1b':
-        sys.exit()
+            if key == glfw.KEY_W:
+                glClearColor(*BG_WHITE)
 
-    if key == 's':
-        glClearColor(*BG_BLACK)
+            if key == glfw.KEY_R:
+                glClearColor(*BG_RED)
 
-    if key == 'w':
-        glClearColor(*BG_WHITE)
+            if key == glfw.KEY_B:
+                glClearColor(*BG_BLUE)
 
-    if key == 'r':
-        glClearColor(*BG_RED)
+            if key == glfw.KEY_G:
+                glClearColor(*BG_YELLOW)
 
-    if key == 'b':
-        glClearColor(*BG_BLUE)
+        else:
 
-    if key == 'g':
-        glClearColor(*BG_YELLOW)
+            if key == glfw.KEY_W:
+                glColor(*M_WHITE)
 
-    if key == 'S':
-        color = M_BLACK
+            if key == glfw.KEY_R:
+                glColor(*M_RED)
 
-    if key == 'W':
-        color = M_WHITE
+            if key == glfw.KEY_B:
+                glColor(*M_BLUE)
 
-    if key == 'R':
-        color = M_RED
+            if key == glfw.KEY_G:
+                glColor(*M_YELLOW)
 
-    if key == 'B':
-        color = M_BLUE
+            if key == glfw.KEY_S:
+                glColor(*M_BLACK)
 
-    if key == 'G':
-        color = M_YELLOW
+        if key == glfw.KEY_ESCAPE:
+            sys.exit()
 
-    if key == 'o':
-        if persp_proj:
-            ortho_proj = True
-            persp_proj = False
-            resize_viewport(WIDTH, HEIGHT)
+        if key == glfw.KEY_O:
+            if persp_proj:
+                ortho_proj = True
+                persp_proj = False
+                resize_viewport(win, WIDTH, HEIGHT)
 
-    # Activate Perspective-Projection
-    if key == 'p':
-        if ortho_proj:
-            ortho_proj = False
-            persp_proj = True
-            resize_viewport(WIDTH, HEIGHT)
+        if key == glfw.KEY_P:
+            if ortho_proj:
+                ortho_proj = False
+                persp_proj = True
+                resize_viewport(win, WIDTH, HEIGHT)
 
-    if key == 'h':
-        shadows = not shadows
+        if key == glfw.KEY_H:
+            shadows = not shadows
 
-    glutPostRedisplay()
+    if key == glfw.KEY_LEFT_SHIFT:
+        smallChars = not smallChars
+
+
+def mouse_pressed(win, button, action, mods):
+    global zooming, rotate_b, translating, actOri, angle, axis, start_p, zoom, mouse_x, mouse_y
+
+    print("Pressing mouse: ", button)
+
+    if button == glfw.MOUSE_BUTTON_MIDDLE:
+        if glfw.get_mouse_button(win, button) == glfw.PRESS:
+            zooming = True
+            start_p = [mouse_x, mouse_y, 0]
+            zoom = start_p[1]
+        if glfw.get_mouse_button(win, button) == glfw.RELEASE:
+            zooming = False
+
+    if button == glfw.MOUSE_BUTTON_LEFT:
+        r = min(WIDTH, HEIGHT) / 2.0
+        if glfw.get_mouse_button(win, button) == glfw.PRESS:
+            rotate_b = True
+            start_p = projectOnSphere(mouse_x, mouse_y, r)
+        if glfw.get_mouse_button(win, button) == glfw.RELEASE:
+            rotate_b = False
+            actOri = actOri * rotate(angle, axis)
+            angle = 0
+
+    if button == glfw.MOUSE_BUTTON_RIGHT:
+        if glfw.get_mouse_button(win, button) == glfw.PRESS:
+            translating = True
+            start_p = [mouse_x, mouse_y, 0]
+        if glfw.get_mouse_button(win, button) == glfw.RELEASE:
+            translating = False
 
 
 # Vorlesung
@@ -330,37 +363,11 @@ def rotate(angle, axis):
     return r.transpose()
 
 
-def mouse_pressed(button, state, x, y):
-    global zooming, rotate_b, translating, actOri, angle, axis, start_p, zoom
+def mouse_moved(win, x, y):
+    global start_p, zooming, zoom, translating, new_x_pos, new_y_pos, zoom, scale_factor, angle, axis, mouse_x, mouse_y
 
-    if button == GLUT_MIDDLE_BUTTON:
-        if state == GLUT_DOWN:
-            zooming = True
-            start_p = [x, y, 0]
-            zoom = start_p[1]
-        if state == GLUT_UP:
-            zooming = False
-
-    if button == GLUT_LEFT_BUTTON:
-        r = min(WIDTH, HEIGHT) / 2.0
-        if state == GLUT_DOWN:
-            rotate_b = True
-            start_p = projectOnSphere(x, y, r)
-        if state == GLUT_UP:
-            rotate_b = False
-            actOri = actOri * rotate(angle, axis)
-            angle = 0
-
-    if button == GLUT_RIGHT_BUTTON:
-        if state == GLUT_DOWN:
-            translating = True
-            start_p = [x, y, 0]
-        if state == GLUT_UP:
-            translating = False
-
-
-def mouse_moved(x, y):
-    global start_p, zooming, zoom, translating, new_x_pos, new_y_pos, zoom, scale_factor, angle, axis
+    mouse_x = x
+    mouse_y = y
 
     # Vorlesung
     if rotate_b:
@@ -369,7 +376,6 @@ def mouse_moved(x, y):
         dot = np.dot(start_p, moveP)
         angle = math.acos(dot)
         axis = np.cross(start_p, moveP)
-        glutPostRedisplay()
 
     if zooming:
         if zoom > y and scale_factor > 0:
@@ -383,32 +389,63 @@ def mouse_moved(x, y):
 
         glScale(scale_factor, scale_factor, scale_factor)
         zoom = y
-        glutPostRedisplay()
 
     if translating:
         new_x_pos = new_x_pos + float(float((x - start_p[0])) / WIDTH)
         new_y_pos = new_y_pos + float(float((y - start_p[1])) / HEIGHT)
         start_p = [x, y, 0]
-        glutPostRedisplay()
+
+
+def run():
+    # initializer timer
+    glfw.set_time(0.0)
+    t = 0.0
+    while not glfw.window_should_close(window):
+        # update every x seconds
+        currT = glfw.get_time()
+        if currT - t > 1.0 / frame_rate:
+            # update time
+            t = currT
+            # clear
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+            display()
+
+            # Poll for and process events
+            glfw.poll_events()
+    # end
+    glfw.terminate()
 
 
 def main():
-    glutInit(sys.argv)
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB)
-    glutInitWindowSize(WIDTH, HEIGHT)
-    glutCreateWindow("OpenGL obj Viewer")
+    global window, frame_rate
+    cwd = os.getcwd()
 
-    glutDisplayFunc(display)
-    glutReshapeFunc(resize_viewport)
-    glutKeyboardFunc(key_pressed)
-    glutMouseFunc(mouse_pressed)
-    glutMotionFunc(mouse_moved)
+    if not glfw.init():
+        return
+
+    os.chdir(cwd)
+
+    glfw.window_hint(glfw.DEPTH_BITS, 32)
+    frame_rate = 144
+    window = glfw.create_window(WIDTH, HEIGHT, "2D Graphics", None, None)
+
+    if not window:
+        glfw.terminate()
+        return
+
+    glfw.make_context_current(window)
+
+    glfw.set_mouse_button_callback(window, mouse_pressed)
+    glfw.set_key_callback(window, key_pressed)
+    glfw.set_window_size_callback(window, resize_viewport)
+    glfw.set_cursor_pos_callback(window, mouse_moved)
 
     create_obj_from_file()
 
     init_opengl()
 
-    glutMainLoop()
+    run()
 
 
 # call main
