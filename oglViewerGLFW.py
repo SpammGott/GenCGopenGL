@@ -156,7 +156,7 @@ def create_obj_from_file():
 def display():
     glMatrixMode(GL_MODELVIEW)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glLoadIdentity()
+    # glLoadIdentity()
 
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
@@ -164,9 +164,9 @@ def display():
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_NORMALIZE)
 
-    light = np.array([1.0, 1.0, 1.0, 0.0])
+    light = np.array([0.0, 100000.0, -0.1, 0.0])
     glLightfv(GL_LIGHT0, GL_POSITION, light)
-    p = [1.0, 0, 0, 0, 0, 1.0, 0, -1.0 / 1.0, 0, 0, 1.0, 0, 0, 0, 0, 0]
+    p = [1.0, 0, 0, 0, 0, 1.0, 0, -1.0 / light[1], 0, 0, 1.0, 0, 0, 0, 0, 0]
 
     my_vbo.bind()
     glEnableClientState(GL_VERTEX_ARRAY)
@@ -174,23 +174,11 @@ def display():
     glVertexPointer(3, GL_FLOAT, 24, my_vbo)
     glNormalPointer(GL_FLOAT, 24, my_vbo + 12)
 
-    if new_x_pos is not None:
-        glTranslate(new_x_pos, -new_y_pos, 0.0)
-
-    glMultMatrixf(actOri * rotate(angle, axis))
-
-    glScale(scale_factor, scale_factor, scale_factor)
-    glTranslate(-center[0], -center[1], -center[2])
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-    glDrawArrays(GL_TRIANGLES, 0, len(data))
-
     if shadows:
         # Schatten ab hier
-        glColor3fv(color)
-        glCallList(my_vbo)
         glMatrixMode(GL_MODELVIEW)
         glPushMatrix()
-        glTranslatef(1.0, 1.0, 1.0)
+        glTranslatef(light[0], light[1], light[2])
 
         glDisable(GL_DEPTH_TEST)
         glDisable(GL_LIGHTING)
@@ -198,16 +186,26 @@ def display():
         glMultMatrixf(p)
         glColor3fv(M_BLACK)
 
-        glTranslatef(-1.0, -1.0, -1.0)
+        glTranslatef(-light[0], -light[1], -light[2])
         glDrawArrays(GL_TRIANGLES, 0, len(data))
 
         glEnable(GL_LIGHTING)
         glEnable(GL_DEPTH_TEST)
 
-        glCallList(my_vbo)
         glPopMatrix()
-        glEnable(GL_DEPTH_TEST)
         # Schatten bis hier
+
+    glLoadIdentity()
+    if new_x_pos is not None:
+        glTranslate(new_x_pos, -new_y_pos, 0.0)
+
+    glMultMatrixf(actOri * rotate(angle, axis))
+
+    glColor3fv(color)
+    glScale(scale_factor, scale_factor, scale_factor)
+    glTranslate(-center[0], -center[1], -center[2])
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+    glDrawArrays(GL_TRIANGLES, 0, len(data))
 
     my_vbo.unbind()
 
