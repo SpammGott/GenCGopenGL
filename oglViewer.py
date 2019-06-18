@@ -56,6 +56,8 @@ start_p = [0, 0, 0]
 angle = 0
 axis = np.array([0, 0, 1])
 
+shadows = False
+
 
 def init_opengl():
     glClearColor(*BG_WHITE)
@@ -182,21 +184,30 @@ def display():
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     glDrawArrays(GL_TRIANGLES, 0, len(data))
 
-    # Schatten ab hier
-    glDisable(GL_DEPTH_TEST)
-    glColor3fv(color)
-    glCallList(my_vbo)
-    glMatrixMode(GL_MODELVIEW)
-    glPushMatrix()
-    glTranslatef(1.0, 1.0, 1.0)
-    glMultMatrixf(p)
-    glTranslatef(-1.0, -1.0, -1.0)
-    glColor3fv(M_BLACK)
+    if shadows:
+        # Schatten ab hier
+        glColor3fv(color)
+        glCallList(my_vbo)
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        glTranslatef(1.0, 1.0, 1.0)
 
-    glCallList(my_vbo)
-    glPopMatrix()
-    glEnable(GL_DEPTH_TEST)
-    # Schatten bis hier
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_LIGHTING)
+
+        glMultMatrixf(p)
+        glColor3fv(M_BLACK)
+
+        glTranslatef(-1.0, -1.0, -1.0)
+        glDrawArrays(GL_TRIANGLES, 0, len(data))
+
+        glEnable(GL_LIGHTING)
+        glEnable(GL_DEPTH_TEST)
+
+        glCallList(my_vbo)
+        glPopMatrix()
+        glEnable(GL_DEPTH_TEST)
+        # Schatten bis hier
 
     my_vbo.unbind()
 
@@ -240,7 +251,7 @@ def resize_viewport(width, height):
 
 
 def key_pressed(key, x, y):
-    global persp_proj, ortho_proj, color
+    global persp_proj, ortho_proj, color, shadows
 
     key = key.decode("utf-8")
 
@@ -291,7 +302,7 @@ def key_pressed(key, x, y):
             resize_viewport(WIDTH, HEIGHT)
 
     if key == 'h':
-        pass
+        shadows = not shadows
 
     glutPostRedisplay()
 
