@@ -43,13 +43,18 @@ zooming = False
 mouse_x = None
 mouse_y = None
 
-rotate = False
+rotate_b = False
 rotate_x = 0.0
 rotate_y = 0.0
 
 translating = False
 new_x_pos = 0.0
 new_y_pos = 0.0
+
+actOri = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+start_p = [0, 0, 0]
+angle = 0
+axis = np.array([0, 0, 1])
 
 
 def init_opengl():
@@ -170,8 +175,7 @@ def display():
     if new_x_pos is not None:
         glTranslate(new_x_pos, -new_y_pos, 0.0)
 
-    glRotate(rotate_y, 1, 0, 0)
-    glRotate(rotate_x, 0, 1, 0)
+    glMultMatrixf(actOri * rotate(angle, axis))
 
     glScale(scale_factor, scale_factor, scale_factor)
     glTranslate(-center[0], -center[1], -center[2])
@@ -217,22 +221,20 @@ def resize_viewport(width, height):
 
     # Ortho Projection
     if ortho_proj:
-        if width == height:
-            glOrtho(-1.5 - zoom, 1.5 + zoom, -1.5 - zoom, 1.5 + zoom, -10.0, 10.0)
-        elif width <= height:
-            glOrtho(-1.5 - zoom, 1.5 + zoom, (-1.5 - zoom) * aspectHeight,
-                    (1.5 + zoom) * aspectHeight, -1.0, 1.0)
+        if width <= height:
+            glOrtho(-1.5, 1.5, (-1.5) * aspectHeight,
+                    1.5 * aspectHeight, -100.0, 100.0)
         else:
-            glOrtho((-1.5 - zoom) * aspect, (1.5 + zoom) * aspect, -1.5 - zoom, 1.5 + zoom,
-                    -10.0, 10.0)
+            glOrtho((-1.5) * aspect, (1.5) * aspect, -1.5, 1.5,
+                    -100.0, 100.0)
 
     # Perspective Projection
     if persp_proj:
         if width <= height:
             gluPerspective(fov * aspectHeight, aspect, near, far)
         else:
-            gluPerspective(fov, aspect, near, far)
-        gluLookAt(0, 0, 3 + zoom, 0, 0, 0, 0, 1, 0)
+            gluPerspective(fov * aspect, aspect, near, far)
+        gluLookAt(0, 0, 3, 0, 0, 0, 0, 1, 0)
 
     glMatrixMode(GL_MODELVIEW)
 
@@ -294,64 +296,89 @@ def key_pressed(key, x, y):
     glutPostRedisplay()
 
 
+# Vorlesung
+def projectOnSphere(x, y, r):
+    x, y = x - WIDTH / 2.0, HEIGHT / 2.0 - y
+    a = min(r * r, x ** 2 + y ** 2)
+    z = math.sqrt(r * r - a)
+    l = math.sqrt(x ** 2 + y ** 2 + z ** 2)
+    return x / l, y / l, z / l
+
+
+# Vorlesung
+def rotate(angle, axis):
+    c, mc = math.cos(angle), 1 - math.cos(angle)
+    s = math.sin(angle)
+    l = math.sqrt(np.dot(np.array(axis), np.array(axis)))
+    x, y, z = np.array(axis) / l
+    r = np.matrix(
+        [[x * x * mc + c, x * y * mc - z * s, x * z * mc + y * s, 0],
+         [x * y * mc + z * s, y * y * mc + c, y * z * mc - x * s, 0],
+         [x * z * mc - y * s, y * z * mc + x * s, z * z * mc + c, 0],
+         [0, 0, 0, 1]])
+    return r.transpose()
+
+
 def mouse_pressed(button, state, x, y):
-    global zooming, mouse_x, mouse_y, rotate, translating
+    global zooming, rotate_b, translating, actOri, angle, axis, start_p, zoom
 
     if button == GLUT_MIDDLE_BUTTON:
         if state == GLUT_DOWN:
             zooming = True
-            mouse_x = x
-            mouse_y = y
+            start_p = [x, y, 0]
+            zoom = start_p[1]
         if state == GLUT_UP:
             zooming = False
-            mouse_x = None
-            mouse_y = None
 
     if button == GLUT_LEFT_BUTTON:
+        r = min(WIDTH, HEIGHT) / 2.0
         if state == GLUT_DOWN:
-            rotate = True
-            mouse_x = x
-            mouse_y = y
+            rotate_b = True
+            start_p = projectOnSphere(x, y, r)
         if state == GLUT_UP:
-            rotate = False
-            mouse_x = None
-            mouse_y = None
+            rotate_b = False
+            actOri = actOri * rotate(angle, axis)
+            angle = 0
 
     if button == GLUT_RIGHT_BUTTON:
         if state == GLUT_DOWN:
             translating = True
-            mouse_x = x
-            mouse_y = y
+            start_p = [x, y, 0]
         if state == GLUT_UP:
             translating = False
-            mouse_x = None
-            mouse_y = None
 
 
 def mouse_moved(x, y):
-    global mouse_x, mouse_y, zooming, zoom, rotate_x, rotate_y, translating, new_x_pos, new_y_pos
+    global start_p, zooming, zoom, translating, new_x_pos, new_y_pos, zoom, scale_factor, angle, axis
 
-    x_diff = abs(x) - abs(mouse_x)
-    y_diff = abs(y) - abs(mouse_y)
+    # Vorlesung
+    if rotate_b:
+        r = min(WIDTH, HEIGHT) / 2.0
+        moveP = projectOnSphere(x, y, r)
+        dot = np.dot(start_p, moveP)
+        angle = math.acos(dot)
+        axis = np.cross(start_p, moveP)
+        glutPostRedisplay()
 
     if zooming:
-        scale = float(HEIGHT) / ANGLE
-        zoom += (y_diff / scale)
-        resize_viewport(HEIGHT, WIDTH)
+        if zoom > y and scale_factor > 0:
+            scale_factor += abs(float(float((y - start_p[1])) / HEIGHT))
 
-    if rotate:
-        rotate_x += x_diff
-        rotate_y += y_diff
+        if zoom <= y and scale_factor > 0:
+            scale_factor -= abs(float(float((y - start_p[1])) / HEIGHT))
+
+        if scale_factor <= 0.0015:
+            scale_factor = 0.002
+
+        glScale(scale_factor, scale_factor, scale_factor)
+        zoom = y
+        glutPostRedisplay()
 
     if translating:
-        scale = float(WIDTH) / 2.0
-        new_x_pos += x_diff / scale
-        new_y_pos += y_diff / scale
-
-    mouse_x = x
-    mouse_y = y
-
-    glutPostRedisplay()
+        new_x_pos = new_x_pos + float(float((x - start_p[0])) / WIDTH)
+        new_y_pos = new_y_pos + float(float((y - start_p[1])) / HEIGHT)
+        start_p = [x, y, 0]
+        glutPostRedisplay()
 
 
 def main():
